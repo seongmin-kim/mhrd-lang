@@ -11,7 +11,14 @@ const (
 )
 
 func isWhitespace(r rune) bool {
-	if r == ' ' || r == '\n' || r == '\t' {
+	if r == ' ' || r == '\t' {
+		return true
+	}
+	return false
+}
+
+func isNewline(r rune) bool {
+	if r == '\n' {
 		return true
 	}
 	return false
@@ -103,6 +110,9 @@ func (s *Scanner) Scan() (token, string) {
 	if isWhitespace(tok) {
 		s.unread()
 		return s.scanWhitespace()
+	} else if isNewline(tok) {
+		s.unread()
+		return s.scanNewline()
 	} else if isLetter(tok) {
 		s.unread()
 		return s.scanLetter()
@@ -136,10 +146,18 @@ func (s *Scanner) Scan() (token, string) {
 	}
 
 	// arrow
-	if tok == '-' && s.read() == '>' {
+	if s.read() == '>' && tok == '-' {
 		return ARROW, "->"
+	} else {
+		s.unread()
 	}
 
+	// comment
+	if s.read() == '/' && tok == '/' {
+		return s.scanComment()
+	} else {
+		s.unread()
+	}
 	// eof, invalid
 	if isEOF(tok) {
 		return EOF, string(eof)
@@ -162,6 +180,40 @@ func (s *Scanner) scanWhitespace() (token, string) {
 		}
 	}
 	return WHITESPACE, buf.String()
+}
+
+func (s *Scanner) scanNewline() (token, string) {
+	var buf bytes.Buffer
+	buf.WriteRune(s.read())
+
+	for {
+		if tok := s.read(); tok == eof {
+			break
+		} else if !isNewline(tok) {
+			s.unread()
+			break
+		} else {
+			buf.WriteRune(tok)
+		}
+	}
+	return NEWLINE, buf.String()
+}
+
+func (s *Scanner) scanComment() (token, string) {
+	var buf bytes.Buffer
+	buf.WriteRune(s.read())
+
+	for {
+		if tok := s.read(); tok == eof {
+			break
+		} else if isNewline(tok) {
+			s.unread()
+			break
+		} else {
+			buf.WriteRune(tok)
+		}
+	}
+	return COMMENT, buf.String()
 }
 
 func (s *Scanner) scanLetter() (token, string) {

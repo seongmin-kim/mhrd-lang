@@ -6,7 +6,8 @@ type token int
 const (
 	EOF = iota
 	INVALID
-	WHITESPACE // '\t' | '\n' | ' '
+	WHITESPACE // '\t' | ' '
+	NEWLINE    // '\n'
 	DIGIT      // '0' ... '9'
 	LETTER     // 'a' ... 'z' | 'A' ... 'Z'
 
@@ -22,4 +23,6 @@ const (
 	LEFTBRACKET  // '['
 	RIGHTBRACKET // ']'
 	ARROW        // "->"
+
+	COMMENT // '//'
 )
