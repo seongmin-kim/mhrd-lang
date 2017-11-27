@@ -103,7 +103,7 @@ func (s *Scanner) unread() error {
 	return s.r.UnreadRune()
 }
 
-func (s *Scanner) Scan() (token, string) {
+func (s *Scanner) scan() (token, string) {
 	tok := s.read()
 
 	// character
@@ -236,7 +236,7 @@ func (s *Scanner) scanLetter() (token, string) {
 	if "Inputs" == buf.String() {
 		return INPUTS, buf.String()
 	} else if "Outputs" == buf.String() {
-		return OUTPUTs, buf.String()
+		return OUTPUTS, buf.String()
 	} else if "Parts" == buf.String() {
 		return PARTS, buf.String()
 	} else if "Wires" == buf.String() {

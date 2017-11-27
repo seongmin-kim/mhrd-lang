@@ -12,7 +12,7 @@ const (
 	LETTER     // 'a' ... 'z' | 'A' ... 'Z'
 
 	INPUTS  // "Inputs"
-	OUTPUTs // "Outputs"
+	OUTPUTS // "Outputs"
 	PARTS   // "Parts"
 	WIRES   // "Wires"
 
