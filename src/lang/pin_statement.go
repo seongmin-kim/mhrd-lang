@@ -2,7 +2,7 @@ package lang
 
 type Port struct {
 	Id   string
-	Pins int
+	Pins Range
 }
 
 type InputStatement struct {

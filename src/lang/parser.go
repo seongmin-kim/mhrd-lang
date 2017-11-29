@@ -52,7 +52,7 @@ func (p *Parser) scanIgnoreWhitespace() (token, string) {
 }
 
 func (p *Parser) parsePort() (*Port, error) {
-	port := Port{Pins: 1}
+	port := Port{Pins: newRange(1, 1)}
 
 	tok, literal := p.scanIgnoreWhitespace()
 	port.Id = literal
@@ -66,7 +66,7 @@ func (p *Parser) parsePort() (*Port, error) {
 			return nil, err
 		}
 		val, _ := strconv.Atoi(literal)
-		port.Pins = val
+		port.Pins = newRange(1, val)
 
 		tok, literal = p.scanIgnoreWhitespace()
 		if tok != RIGHTBRACKET {
@@ -174,7 +174,7 @@ func (p *Parser) ParseParts() (*PartStatement, error) {
 
 	tok, literal := p.scanIgnoreWhitespace()
 	if tok != PARTS {
-		err := fmt.Errorf("Found '%s', expected 'Outputs'", literal)
+		err := fmt.Errorf("Found '%s', expected 'Parts'", literal)
 		return nil, err
 	}
 
@@ -202,4 +202,189 @@ func (p *Parser) ParseParts() (*PartStatement, error) {
 			statement.add(*part)
 		}
 	}
+}
+
+func (p *Parser) parseWire() (*Wire, error) {
+
+	wire := Wire{
+		SourceRange: newRange(0, 0),
+		TargetRange: newRange(0, 0),
+	}
+
+	// left part
+
+	tok, literal := p.scanIgnoreWhitespace()
+	if tok == DIGIT {
+		wire.Source = literal
+	} else if tok == LETTER {
+		wire.Source = literal
+
+		if tok, _ := p.scanIgnoreWhitespace(); tok == DOT {
+			if tok, literal := p.scanIgnoreWhitespace(); tok == LETTER {
+				wire.SourceOut = literal
+			} else {
+				err := fmt.Errorf("Found '%s', expected letter", literal)
+				return nil, err
+			}
+		} else {
+			p.unscan()
+		}
+
+		if tok, _ := p.scanIgnoreWhitespace(); tok == LEFTBRACKET {
+			if tok, literal := p.scanIgnoreWhitespace(); tok == DIGIT {
+				// wire.SourceStartPin, _ = strconv.Atoi(literal)
+				val, _ := strconv.Atoi(literal)
+				wire.SourceRange = newRange(val, val)
+				if tok, _ := p.scanIgnoreWhitespace(); tok == COLON {
+					if tok, literal := p.scanIgnoreWhitespace(); tok == DIGIT {
+						// wire.SourceEndPin, _ = strconv.Atoi(literal)
+						val, _ := strconv.Atoi(literal)
+						wire.SourceRange.End = val
+						if tok, _ := p.scanIgnoreWhitespace(); tok != RIGHTBRACKET {
+							err := fmt.Errorf("Found '%s', expected ']'", literal)
+							return nil, err
+						}
+					} else {
+						err := fmt.Errorf("Found '%s', expected digit", literal)
+						return nil, err
+					}
+				} else if tok == RIGHTBRACKET {
+					val, _ := strconv.Atoi(literal)
+					wire.SourceRange.End = val
+				} else {
+					err := fmt.Errorf("Found '%s', expected ']'", literal)
+					return nil, err
+				}
+			} else {
+				err := fmt.Errorf("Found '%s', expected digit", literal)
+				return nil, err
+			}
+		} else if tok == ARROW {
+			p.unscan()
+		} else {
+			err := fmt.Errorf("Found '%s', expected '[' or '->'", literal)
+			return nil, err
+		}
+	} else {
+		err := fmt.Errorf("Found '%s', expected letter or digit", literal)
+		return nil, err
+	}
+
+	// Arrow
+	if tok, literal = p.scanIgnoreWhitespace(); tok != ARROW {
+		err := fmt.Errorf("Found '%s', expected ->", literal)
+		return nil, err
+	}
+
+	// right part
+
+	tok, literal = p.scanIgnoreWhitespace()
+	wire.Target = literal
+
+	if tok, _ := p.scanIgnoreWhitespace(); tok == DOT {
+		if tok, literal := p.scanIgnoreWhitespace(); tok == LETTER {
+			wire.TargetIn = literal
+		} else {
+			err := fmt.Errorf("Found '%s', expected letter", literal)
+			return nil, err
+		}
+	} else {
+		p.unscan()
+	}
+
+	if tok, _ := p.scanIgnoreWhitespace(); tok == LEFTBRACKET {
+		if tok, literal := p.scanIgnoreWhitespace(); tok == DIGIT {
+			// wire.TargetStartPin, _ = strconv.Atoi(literal)
+			val, _ := strconv.Atoi(literal)
+			wire.TargetRange = newRange(val, val)
+			if tok, _ := p.scanIgnoreWhitespace(); tok == COLON {
+				if tok, literal := p.scanIgnoreWhitespace(); tok == DIGIT {
+					// wire.TargetEndPin, _ = strconv.Atoi(literal)
+					val, _ := strconv.Atoi(literal)
+					wire.TargetRange.End = val
+					if tok, _ := p.scanIgnoreWhitespace(); tok != RIGHTBRACKET {
+						err := fmt.Errorf("Found '%s', expected ']'", literal)
+						return nil, err
+					}
+				} else {
+					err := fmt.Errorf("Found '%s', expected digit", literal)
+					return nil, err
+				}
+			} else if tok == RIGHTBRACKET {
+				// wire.TargetEndPin = wire.TargetStartPin
+				val, _ := strconv.Atoi(literal)
+				wire.TargetRange.End = val
+			} else {
+				err := fmt.Errorf("Found '%s', expected ']'", literal)
+				return nil, err
+			}
+		} else {
+			err := fmt.Errorf("Found '%s', expected digit", literal)
+			return nil, err
+		}
+	} else if tok == COMMA || tok == SEMICOLON {
+		p.unscan()
+	} else {
+		err := fmt.Errorf("Found '%s', expected ';'", literal)
+		return nil, err
+	}
+
+	return &wire, nil
+}
+
+func (p *Parser) ParseWires() (*WireStatement, error) {
+
+	tok, literal := p.scanIgnoreWhitespace()
+	if tok != WIRES {
+		err := fmt.Errorf("Found '%s', expected 'Wires'", literal)
+		return nil, err
+	}
+
+	tok, literal = p.scanIgnoreWhitespace()
+	if tok != COLON {
+		err := fmt.Errorf("Found '%s', expected ':'", literal)
+		return nil, err
+	}
+
+	statement := NewWireStatement()
+
+	for {
+		tok, _ := p.scanIgnoreWhitespace()
+
+		if tok == SEMICOLON {
+			return statement, nil
+		}
+
+		if tok == LETTER || tok == DIGIT {
+			p.unscan()
+			wire, err := p.parseWire()
+			if err != nil {
+				return nil, err
+			}
+			statement.add(*wire)
+		}
+	}
+}
+
+func (p *Parser) Parse() (*InputStatement, *OutputStatement, *PartStatement, *WireStatement, error) {
+	inputs, err := p.ParseInputs()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	outputs, err := p.ParseOutputs()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	parts, err := p.ParseParts()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	wires, err := p.ParseWires()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return inputs, outputs, parts, wires, nil
 }
